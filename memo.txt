@@ -1,0 +1,8 @@
+トークンの説明: test
+トークンID: 66hqgti7bbg5pxo1ip3shzew8y
+アクセストークン: i3kjhoc6k3fzuqsdejquhr5bwr
+
+
+5zeseysurpbudp114wgs7zsosa
+
+curl -i -X POST -H 'Content-Type: application/json' -d '{"channel_id":"5zeseysurpbudp114wgs7zsosa", "message":"This is a message from a bot"}' -H 'Authorization: Bearer i3kjhoc6k3fzuqsdejquhr5bwr' http://127.0.0.1/api/v4/posts

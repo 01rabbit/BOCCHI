@@ -1,47 +1,77 @@
 import json
+import os
 from flask import Flask, request
 import requests
-
-BOT_TOKEN = 'i3kjhoc6k3fzuqsdejquhr5bwr'
-CHANNEL_ID = '5zeseysurpbudp114wgs7zsosa' #Town Square
-MM_API_ADDRESS = 'http://127.0.0.1/api/v4/posts' 
+import subprocess
+import threading
+from config import matter_conf as config
+from matter_communicator import messenger
 
 app = Flask(__name__)
 
-@app.route("/")
-def hello():
-    return "HelloWorld"
+commands = ['表示', 'スキャン']
+
+def get_menu():
+    menuText = "## メニュー\n\
+- test1\n\
+- test2\n\
+- test3"
+    return menuText
+
+def check_dir(targetIP):
+    dirPath = f"results/{targetIP}"
+    if os.path.isdir(dirPath):
+        return
+    else:
+        os.mkdir(dirPath)
+        return
+
+def get_command(cmd):
+    for command in commands:
+        if command in cmd:
+            return command
+    return ""
 
 @app.route("/matter", methods=['POST'])
 def bot_reply():
     posted_user = request.json['user_name']
     posted_msg = request.json['text']
+    try:
+        firstSegment = posted_msg.split(" ")
+        # firstSegment[0] : WakeUp Code
+        # firstSegment[1] : Target & Command
+        secondSegment = firstSegment[1].split("を")
+        # secondSegment[0] : Target
+        # secondSegment[1] : Command
+        target = secondSegment[0]
+        command = get_command(secondSegment[1])
 
-    reply_headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + BOT_TOKEN,
-    }
+        if command != "":
+            messages = f"{command}を開始します"
+            messenger(posted_user=posted_user, msg=messages)
 
-    reply_data = {
-        "channel_id": CHANNEL_ID,
-        "message": f"@{posted_user} Bot reply message.",
-        "props": {
-            "attachments": [
-                    {
-                "author_name": posted_user,
-                "text": posted_msg,
-                }
-            ]
-        },
-    }
+            if command in "表示":
+                if target in "ファイル":
+                    result = subprocess.run(["ls","-l"], capture_output=True, text=True)
+                    messages = f"{command}が終了しました。\n" + result.stdout
+                elif target in "メニュー":
+                    messages = get_menu()
+                else:
+                    messages = f"表示するものがありません。"
+            elif command in "スキャン":
+                check_dir(targetIP=target)
+                result = subprocess.run(["nmap", "-sn", "-oA", f"results/{target}/PingScan_{target}", f"{target}"], capture_output=True, text=True)
+                messages = f"{command}が終了しました。\n" + result.stdout
+        else:
+            messages  = "Hi"
+        
+    except IndexError:
+        messages = "呼びました？"
 
-    reply_request = requests.post(
-        MM_API_ADDRESS,
-        headers = reply_headers,
-        data = json.dumps(reply_data)
-    )
+    finally:
+        messenger(posted_user=posted_user, msg=messages)
 
-    return reply_request
+    return
 
 if __name__ == '__main__':
     app.debug = True

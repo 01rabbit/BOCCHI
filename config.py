@@ -24,5 +24,11 @@ def db_conf():
 def matter_conf():
     return config('service.ini','mattermost')
 
+def faraday_conf():
+    return config('service.ini','faraday')
+
+def autorecon_conf():
+    return config('service.ini','autorecon')
+
 if __name__ == '__main__':
     config()

@@ -1,8 +1,8 @@
 import json
-from config import matter_conf as config
+from config import matter_conf as mm_conf
 import requests
 
-params = config()
+params = mm_conf()
 BOT_TOKEN = params['bot_token']
 CHANNEL_ID = params['channel_id'] #Town Square
 MM_API_ADDRESS = params['mm_api_address']

@@ -27,8 +27,8 @@ def matter_conf():
 def faraday_conf():
     return config('service.ini','faraday')
 
-def autorecon_conf():
-    return config('service.ini','autorecon')
+def gvm_conf():
+    return config('service.ini','gvm')
 
 if __name__ == '__main__':
     config()

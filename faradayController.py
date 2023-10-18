@@ -8,7 +8,7 @@ FARADAY_PASS = params['password']
 FARADAY_SERVER = params['server']
 FARADAY_WORKSPACE = params['workspace']
 
-def show_service_message():
+def show_faraday():
     messages = f"情報はFaradayで確認します。以下のリンクをクリック\n{FARADAY_SERVER}"
     return messages
 

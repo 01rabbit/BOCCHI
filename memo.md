@@ -1,3 +1,5 @@
+# GVM Test
+
 ``` shell
 $ gvm-cli socket --xml "<get_version/>"
 ```
@@ -21,4 +23,13 @@ $ gvm-cli socket --xml "<create_task><name>Scan Suspect Host</name><target id=\"
 ```
 ``` xml
 <create_task_response status="201" status_text="OK, resource created" id="27cc4e20-0e8e-48b8-89df-b86fa57f12d9"/>
+```
+
+# Mattermost test
+
+- Botアクセストークン: `i3kjhoc6k3fzuqsdejquhr5bwr`
+- Channel_ID: `5zeseysurpbudp114wgs7zsosa`
+
+``` shell
+curl -i -X POST -H 'Content-Type: application/json' -d '{"channel_id":"5zeseysurpbudp114wgs7zsosa", "message":"This is a message from a bot"}' -H 'Authorization: Bearer i3kjhoc6k3fzuqsdejquhr5bwr' http://127.0.0.1/api/v4/posts
 ```

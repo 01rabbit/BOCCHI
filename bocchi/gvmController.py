@@ -2,7 +2,7 @@ import subprocess
 import xmltodict
 import datetime
 import time
-from config import gvm_conf as g_conf
+from bocchi.config import gvm_conf as g_conf
 
 CONFIG_ID = "daba56c8-73ec-11df-a475-002264764cea"
 SCANNER_ID = "08b69003-5fc2-4037-a479-93b440211c73"

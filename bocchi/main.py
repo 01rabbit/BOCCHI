@@ -3,10 +3,10 @@
 import os
 from flask import Flask, request
 import subprocess
-from matterCommunicator import messenger
-import faradayController as fc
-import gvmController as gc
 import datetime
+from bocchi.matterCommunicator import messenger
+import bocchi.faradayController as fc
+import bocchi.gvmController as gc
 
 app = Flask(__name__)
 
@@ -151,6 +151,9 @@ def bot_reply():
 
     return
 
-if __name__ == '__main__':
+def main():
     app.debug = True
     app.run(host='0.0.0.0', port=5000)
+
+if __name__ == '__main__':
+    main()

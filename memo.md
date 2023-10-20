@@ -33,3 +33,17 @@ $ gvm-cli socket --xml "<create_task><name>Scan Suspect Host</name><target id=\"
 ``` shell
 curl -i -X POST -H 'Content-Type: application/json' -d '{"channel_id":"5zeseysurpbudp114wgs7zsosa", "message":"This is a message from a bot"}' -H 'Authorization: Bearer i3kjhoc6k3fzuqsdejquhr5bwr' http://127.0.0.1/api/v4/posts
 ```
+
+# Faraday setting
+
+``` shell
+vim .faraday/config/server.ini 
+```
+
+``` vim
+[faraday_server]
+port = 5985
+bind_address = localhost
+```
+
+``bind_address = 0.0.0.0``

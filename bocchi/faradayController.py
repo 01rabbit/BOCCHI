@@ -1,4 +1,4 @@
-from bocchi.config import faraday_conf as f_conf
+from config import faraday_conf as f_conf
 import subprocess
 import os 
 

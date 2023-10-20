@@ -30,5 +30,8 @@ def faraday_conf():
 def gvm_conf():
     return config('service.ini','gvm')
 
+def brutespray_conf():
+    return config('service.ini','brutespray')
+
 if __name__ == '__main__':
     config()

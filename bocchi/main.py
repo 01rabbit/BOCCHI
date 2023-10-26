@@ -4,10 +4,10 @@ import os
 from flask import Flask, request
 import subprocess
 import datetime
-from matterCommunicator import *
-from config import brutespray_conf as b_conf
-import faradayController as fc
-import gvmController as gc
+from bocchi.matterCommunicator import messenger
+from bocchi.config import brutespray_conf as b_conf
+import bocchi.faradayController as fc
+import bocchi.gvmController as gc
 
 app = Flask(__name__)
 

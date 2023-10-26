@@ -1,6 +1,5 @@
 from configparser import ConfigParser
 import os
-import errno
 
 def config(filename, section):
     # create a parser

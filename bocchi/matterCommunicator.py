@@ -1,5 +1,5 @@
 import json
-from config import matter_conf as mm_conf
+from bocchi.config import matter_conf as mm_conf
 import requests
 
 params = mm_conf()

@@ -17,9 +17,6 @@ def config(filename, section):
     
     return result
 
-def db_conf():
-    return config('service.ini','postgresql')
-
 def matter_conf():
     return config('service.ini','mattermost')
 

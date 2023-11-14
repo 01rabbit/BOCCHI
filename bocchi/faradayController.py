@@ -1,6 +1,6 @@
 from bocchi.config import faraday_conf as f_conf
 import subprocess
-import os 
+import os
 
 params = f_conf()
 FARADAY_USER = params['user']
@@ -63,6 +63,3 @@ def show_vuln_list():
         return result.stdout
     else:
         return messages
-
-# dir_path = "results/192.168.136.135/scans/xml" 
-# import_from_results(dir_path)

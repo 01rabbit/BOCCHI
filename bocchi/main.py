@@ -8,7 +8,7 @@ import threading
 from flask import Flask, request, jsonify
 from janome.analyzer import Analyzer
 from janome.tokenfilter import *
-from socket import inet_aton
+from socket import inet_aton, error
 from bocchi.matterCommunicator import *
 from bocchi.config import brutespray_conf as b_conf
 import bocchi.faradayController as fc
@@ -22,10 +22,15 @@ app = Flask(__name__)
 def valid_ip(order):
     for word in order:
         try:
+            # inet_atonが成功するとIPアドレスが正しいとみなす
             inet_aton(word)
             return word
-        except:
-            None
+        except error:
+            # 失敗した場合は次の単語を試す
+            pass
+
+    # IPアドレスが見つからない場合はNoneを返す
+    return None
 
 # ---------------------------------------------------------------------
 # get_timestamp
@@ -69,21 +74,30 @@ def get_menu():
     return menuText
 
 # ---------------------------------------------------------------------
-# check_dir
+# check_directory
 # ---------------------------------------------------------------------
-def check_dir(targetIP):
-    dirPath = f"results/{targetIP}"
-    if os.path.isdir(dirPath):
-        return dirPath
-    else:
-        os.mkdir(dirPath)
-        return dirPath
+def check_directory(target_ip):
+    """
+    指定されたIPアドレスに対応するディレクトリが存在するか確認し、存在しない場合は作成するメソッド。
 
+    Parameters:
+        target_ip (str): チェックするディレクトリのIPアドレス
+
+    Returns:
+        str: ディレクトリのパス
+    """
+    dir_path = f"results/{target_ip}"
+
+    if os.path.isdir(dir_path):
+        return dir_path
+    else:
+        os.makedirs(dir_path)  # os.mkdirではなくos.makedirsを使用してサブディレクトリも作成する
+        return dir_path
 # ---------------------------------------------------------------------
 # answer
 # ---------------------------------------------------------------------
 def answer():
-    rand = random.randint(1,20)
+    rand = random.randint(1,30)
     if rand % 3 == 0 and rand % 5 == 0:
         messages = "「メニューを表示して」と言ってもらえればメニューを表示します。"
     elif rand % 3 == 0:
@@ -113,12 +127,12 @@ def perform_full_port_scan(ipaddr, posted_user):
     send_message_to_user(posted_user=posted_user, msg=messages)
 
     # nmapをsubprocessで呼び出してフルポートスキャンを実行
-    resultsPath = check_dir(targetIP=ipaddr)
+    resultsPath = check_directory(targetIP=ipaddr)
     subprocess.run(["nmap", "-vv", "--reason", "-Pn", "-T4", "-sV", "-sC", "--version-all", "-A", "-p-", "--osscan-guess", "--script=vuln", "-oA", f"{resultsPath}/FullScan_{get_timestamp()}", ipaddr])
     messages = f"{ipaddr}のフルポートスキャンが終了しました。"
 
     # Faradayへの結果のインポート
-    addText = fc.import_from_results(dir_path=resultsPath)
+    addText = fc.import_results_to_faraday(dir_path=resultsPath)
 
     # 終了連絡の追加
     messages += f"\n{addText}"
@@ -139,18 +153,18 @@ def perform_standard_scan(ipaddr, posted_user):
     Returns:
         str: スキャン結果およびFaradayのインポート結果のメッセージ
     """
-    
+
     # 標準スキャンの開始連絡
     messages = f"nmapで{ipaddr}のスキャンを開始します。\nしばらくお待ちください:coffee:"
-    send_message_to_user(posted_user=posted_user, msg=messages)
+    send_message_to_user(posted_user, messages)
 
     # nmapをsubprocessで呼び出してスキャンを実行
-    resultsPath = check_dir(targetIP=ipaddr)
+    resultsPath = check_directory(ipaddr)
     subprocess.run(["nmap", "-vv", "--reason", "-Pn", "-T4", "-sV", "-sC", "--version-all", "-A", "--osscan-guess", "--script=vuln", "-oA", f"{resultsPath}/Scan_{get_timestamp()}", ipaddr])
     messages = f"{ipaddr}のスキャンが終了しました。"
 
     # Faradayへの結果のインポート
-    addText = fc.import_from_results(dir_path=resultsPath)
+    addText = fc.import_results_to_faraday(resultsPath)
 
     # 終了連絡の追加
     messages += f"\n{addText}"
@@ -173,19 +187,19 @@ def perform_vulnerability_scan_with_gvm(ipaddr, posted_user):
     """
     # 脆弱性スキャンの開始連絡
     messages = f"GVM(Openvas)で{ipaddr}の脆弱性診断を開始します。\nしばらくお待ちください:coffee:"
-    send_message_to_user(posted_user=posted_user, msg=messages)
+    send_message_to_user(posted_user, messages)
 
     # ターゲットの作成
-    targetID = gc.getTargetID(ipaddr)
+    targetID = gc.get_target_id(ipaddr)
 
     # タスクの作成
-    taskID = gc.getTaskID(targetID)
+    taskID = gc.get_task_id(targetID)
 
     # タスクの開始
-    gc.startTask(taskID)
+    gc.start_task(taskID)
 
     # タスクの終了待機
-    gc.checkStatus(taskID)
+    gc.check_status(taskID)
 
     # GVM結果の取得
     messages = gc.check_gvm(ipaddr)
@@ -212,11 +226,11 @@ def perform_brutespray_attack(ipaddr, posted_user):
     PASS = params['password_list']
 
     # 攻撃結果保存ディレクトリの作成
-    resultsPath = check_dir(targetIP=ipaddr)
+    resultsPath = check_directory(ipaddr)
 
     # 認証攻撃の開始連絡
     messages = "認証試行を開始します。\nしばらくお待ちください:coffee:"
-    send_message_to_user(posted_user, msg=messages)
+    send_message_to_user(posted_user, messages)
 
     # Nmapを使用してサービスバージョンを取得
     subprocess.run(["nmap", "-vv", "-Pn", "-T4", "-sV", "-oG", f"{resultsPath}/result", ipaddr])
@@ -247,7 +261,6 @@ def bot_reply():
         firstSegment = posted_msg.split(" ")
         # firstSegment[0] : WakeUp Code
         # firstSegment[1] : Target & Command
-        
         userOrder=[]
         # janomeで形態素解析した結果を複合名詞化してリスト化
         a = Analyzer(token_filters=[CompoundNounFilter()])
@@ -284,13 +297,13 @@ def bot_reply():
                 send_message_to_user(posted_user,get_menu())
             elif "サービス" in userOrder:
                 # サービスをリストで表示
-                send_message_to_user(posted_user,fc.show_service_list())
+                send_message_to_user(posted_user,fc.show_service_list_in_faraday())
             elif "脆弱性診断" in userOrder or "gvm" in userOrder or "GVM" in userOrder:
                 # GVMのダッシュボードを表示
                 send_message_to_user(posted_user,gc.show_gvm())
             elif "脆弱性" in userOrder:
                 # 脆弱性情報をリストで表示
-                send_message_to_user(posted_user,fc.show_vuln_list())
+                send_message_to_user(posted_user,fc.show_vulnerability_list_in_faraday())
             elif "情報" in userOrder or "ファラデー" in userOrder or "faraday" in userOrder or "Faraday" in userOrder:
                 # Faradayのダッシュボードを表示
                 send_message_to_user(posted_user,fc.show_faraday())
@@ -318,7 +331,6 @@ def std_scan():
         },
         "ephemeral_text": f"{posted_usr}によりスキャンが承認されました。"
     }
-    
     return jsonify(response)
 
 @app.route('/actions/full_scan', methods=['POST'])
@@ -337,7 +349,6 @@ def full_scan():
         },
         "ephemeral_text": f"{posted_usr}によりフルポートスキャンが承認されました。"
     }
-    
     return jsonify(response)
 
 @app.route('/actions/vuln_scan', methods=['POST'])
@@ -356,7 +367,6 @@ def vuln_scan():
         },
         "ephemeral_text": f"{posted_usr}により脆弱性診断が承認されました。"
     }
-    
     return jsonify(response)
 
 @app.route('/actions/brute_attack', methods=['POST'])
@@ -375,10 +385,7 @@ def brute_attack():
         },
         "ephemeral_text": f"{posted_usr}により認証試行が承認されました。"
     }
-    
     return jsonify(response)
-
-
 
 @app.route('/actions/reject', methods=['POST'])
 def reject():
@@ -388,7 +395,6 @@ def reject():
         },
         "ephemeral_text": "拒否されました。"
     }
-
     return jsonify(response)
 
 def main():

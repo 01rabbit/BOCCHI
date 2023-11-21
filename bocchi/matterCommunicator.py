@@ -1,11 +1,14 @@
+#!/usr/bin/python3
+
 import json
-from bocchi.config import matter_conf as mm_conf
 import requests
+from bocchi.config import matter_conf as mm_conf
 
 params = mm_conf()
 BOT_TOKEN = params['bot_token']
 CHANNEL_ID = params['channel_id'] #Town Square
 MM_API_ADDRESS = params['mm_api_address']
+BOCCHI_SERVER = params['bocchi_server']
 
 # ---------------------------------------------------------------------
 # send_message_to_user
@@ -78,7 +81,7 @@ def askForStdScanConfirmation(posted_usr,ipaddr):
                     # Acceptボタン
                     "name": "Accept",
                     "integration": {
-                        "url": f"http://172.20.10.2:5000/actions/std_scan?token={BOT_TOKEN}",
+                        "url": f"{BOCCHI_SERVER}/actions/std_scan?token={BOT_TOKEN}",
                         "context": {
                             "text": posted_usr +","+ ipaddr
                         }
@@ -88,7 +91,7 @@ def askForStdScanConfirmation(posted_usr,ipaddr):
                     "name": "Reject",
                     "style": "danger",
                     "integration": {
-                        "url": f"http://172.20.10.2:5000/actions/reject?token={BOT_TOKEN}"
+                        "url": f"{BOCCHI_SERVER}/actions/reject?token={BOT_TOKEN}"
                     }
                 }]
             }]
@@ -133,7 +136,7 @@ def askForFullScanConfirmation(posted_usr,ipaddr):
                     # Acceptボタン
                     "name": "Accept",
                     "integration": {
-                        "url": f"http://172.20.10.2:5000/actions/full_scan?token={BOT_TOKEN}",
+                        "url": f"{BOCCHI_SERVER}/actions/full_scan?token={BOT_TOKEN}",
                         "context": {
                             "text": posted_usr +","+ ipaddr
                         }
@@ -143,7 +146,7 @@ def askForFullScanConfirmation(posted_usr,ipaddr):
                     "name": "Reject",
                     "style": "danger",
                     "integration": {
-                        "url": f"http://172.20.10.2:5000/actions/reject?token={BOT_TOKEN}"
+                        "url": f"{BOCCHI_SERVER}/actions/reject?token={BOT_TOKEN}"
                     }
                 }]
             }]
@@ -188,7 +191,7 @@ def askForVulnScanConfirmation(posted_usr,ipaddr):
                     # Acceptボタン
                     "name": "Accept",
                     "integration": {
-                        "url": f"http://172.20.10.2:5000/actions/vuln_scan?token={BOT_TOKEN}",
+                        "url": f"{BOCCHI_SERVER}/actions/vuln_scan?token={BOT_TOKEN}",
                         "context": {
                             "text": posted_usr +","+ ipaddr
                         }
@@ -198,7 +201,7 @@ def askForVulnScanConfirmation(posted_usr,ipaddr):
                     "name": "Reject",
                     "style": "danger",
                     "integration": {
-                        "url": f"http://172.20.10.2:5000/actions/reject?token={BOT_TOKEN}"
+                        "url": f"{BOCCHI_SERVER}/actions/reject?token={BOT_TOKEN}"
                     }
                 }]
             }]
@@ -243,7 +246,7 @@ def askForBruteAttackConfirmation(posted_usr,ipaddr):
                     # Acceptボタン
                     "name": "Accept",
                     "integration": {
-                        "url": f"http://172.20.10.2:5000/actions/brute_attack?token={BOT_TOKEN}",
+                        "url": f"{BOCCHI_SERVER}/actions/brute_attack?token={BOT_TOKEN}",
                         "context": {
                             "text": posted_usr +","+ ipaddr
                         }
@@ -253,7 +256,7 @@ def askForBruteAttackConfirmation(posted_usr,ipaddr):
                     "name": "Reject",
                     "style": "danger",
                     "integration": {
-                        "url": f"http://172.20.10.2:5000/actions/reject?token={BOT_TOKEN}"
+                        "url": f"{BOCCHI_SERVER}/actions/reject?token={BOT_TOKEN}"
                     }
                 }]
             }]

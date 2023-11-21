@@ -1,7 +1,9 @@
-import subprocess
-import xmltodict
+#!/usr/bin/python3
+
 import datetime
+import subprocess
 import time
+import xmltodict
 from bocchi.config import gvm_conf as g_conf
 
 CONFIG_ID = "daba56c8-73ec-11df-a475-002264764cea"
@@ -14,89 +16,175 @@ All_TCP_and_Nmap_top_100_UDP = "730ef368-57e2-11e1-a90f-406186ea4fc5"
 params = g_conf()
 GVM_SERVER = params['server']
 
+# ---------------------------------------------------------------------
+# show_gvm
+# ---------------------------------------------------------------------
 def show_gvm():
     messages = f"脆弱性診断の結果を確認します。以下のリンクをクリック\n{GVM_SERVER}"
     return messages
 
+# ---------------------------------------------------------------------
+# check_gvm
+# ---------------------------------------------------------------------
 def check_gvm(TARGET):
     messages = f"{TARGET}の脆弱性診断が完了しました。レポートを確認してください。\n{GVM_SERVER}"
     return messages
 
 
-def getTargetID(IPADDRESS):
-    TARGET_NAME = "Target_" + datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-    result = subprocess.run(["gvm-cli", "socket", "--xml",\
-                            f"<create_target><name>{TARGET_NAME}</name><hosts>{IPADDRESS}</hosts><port_list id=\"{All_IANA_assigned_TCP}\"></port_list></create_target>"], capture_output=True, text=True)
+# ---------------------------------------------------------------------
+# get_target_id
+# ---------------------------------------------------------------------
+def get_target_id(ip_address):
+    """
+    指定されたIPアドレスに対するGVMのターゲットIDを取得するメソッド。
+
+    Parameters:
+        ip_address (str): ターゲットのIPアドレス
+
+    Returns:
+        str: ターゲットのID
+    """
+    target_name = "Target_" + datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+
+    result = subprocess.run(["gvm-cli", "socket", "--xml",
+                            f"<create_target><name>{target_name}</name><hosts>{ip_address}</hosts><port_list id=\"{All_IANA_assigned_TCP}\"></port_list></create_target>"],
+                            capture_output=True, text=True)
+
     if result.stdout == "":
-        return
+        return None
     else:
         xml = result.stdout
-        # print(xml)
         root = xmltodict.parse(xml)
         response = root['create_target_response']
         return response['@id']
 
-def getTaskID(TARGET_ID):
-    TASK_NAME = "Task_" + datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-    result = subprocess.run(["gvm-cli", "socket", "--xml",\
-                            f"<create_task><name>{TASK_NAME}</name><target id=\"{TARGET_ID}\"/><config id=\"{CONFIG_ID}\"/><scanner id=\"{SCANNER_ID}\"/></create_task>"], capture_output=True, text=True)
+# ---------------------------------------------------------------------
+# get_task_id
+# ---------------------------------------------------------------------
+def get_task_id(target_id):
+    """
+    指定されたGVMのターゲットIDに対するタスクIDを取得するメソッド。
+
+    Parameters:
+        target_id (str): ターゲットのID
+
+    Returns:
+        str: タスクのID
+    """
+    task_name = "Task_" + datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+
+    result = subprocess.run(["gvm-cli", "socket", "--xml",
+                            f"<create_task><name>{task_name}</name><target id=\"{target_id}\"/><config id=\"{CONFIG_ID}\"/><scanner id=\"{SCANNER_ID}\"/></create_task>"],
+                            capture_output=True, text=True)
+
     if result.stdout == "":
-        return
+        return None
     else:
         xml = result.stdout
-        # print(xml)
         root = xmltodict.parse(xml)
         response = root['create_task_response']
         return response['@id']
-        # print(TASK_ID)
 
-def startTask(TASK_ID):
-    result = subprocess.run(["gvm-cli", "socket", "--xml",\
-                            f"<start_task task_id=\"{TASK_ID}\"/>"], capture_output=True, text=True)
+# ---------------------------------------------------------------------
+# start_task
+# ---------------------------------------------------------------------
+def start_task(task_id):
+    """
+    指定されたGVMのタスクIDに対するタスクを開始し、レポートIDを取得するメソッド。
+
+    Parameters:
+        task_id (str): タスクのID
+
+    Returns:
+        str: レポートのID
+    """
+    result = subprocess.run(["gvm-cli", "socket", "--xml",
+                            f"<start_task task_id=\"{task_id}\"/>"],
+                            capture_output=True, text=True)
+
     if result.stdout == "":
-        return
+        return None
     else:
         xml = result.stdout
-        # print(xml)
         root = xmltodict.parse(xml)
         response = root['start_task_response']
         return response['report_id']
-        # print(REPORT_ID)
+# ---------------------------------------------------------------------
+# check_status
+# ---------------------------------------------------------------------
+def check_status(task_id):
+    """
+    指定されたGVMのタスクIDに対するタスクの状態を確認するメソッド。
 
-def checkStatus(TASK_ID):
+    Parameters:
+        task_id (str): タスクのID
+
+    Returns:
+        str: タスクの最終状態
+    """
     while True:
-        result = subprocess.run(["gvm-cli", "socket", "--xml",\
-                                f"<get_tasks task_id=\"{TASK_ID}\" />"], capture_output=True, text=True)
+        result = subprocess.run(["gvm-cli", "socket", "--xml",
+                                f"<get_tasks task_id=\"{task_id}\" />"],
+                                capture_output=True, text=True)
+
         if result.stdout == "":
             break
         else:
             xml = result.stdout
             root = xmltodict.parse(xml)
             response = root['get_tasks_response']['task']['status']
-            # print(response)
+
             if response == "Done":
                 break
             else:
-                time.sleep(60) # ６０秒待機
-    # print("done")
+                time.sleep(60)  # 60秒待機
+
     return "Done"
 
-def deleteTask(TASK_ID):
-    result = subprocess.run(["gvm-cli", "socket", "--xml",\
-                            f"<delete_task task_id=\"{TASK_ID}\" />"], capture_output=True, text=True)
+# ---------------------------------------------------------------------
+# delete_task
+# ---------------------------------------------------------------------
+def delete_task(task_id):
+    """
+    指定されたGVMのタスクIDに対するタスクを削除するメソッド。
+
+    Parameters:
+        task_id (str): タスクのID
+
+    Returns:
+        str: ステータステキスト
+    """
+    result = subprocess.run(["gvm-cli", "socket", "--xml",
+                            f"<delete_task task_id=\"{task_id}\" />"],
+                            capture_output=True, text=True)
+
     if result.stdout == "":
-        return
+        return None
     else:
         xml = result.stdout
         root = xmltodict.parse(xml)
         response = root['delete_task_response']
         return response['@status_text']
 
-def deleteTarget(TARGET_ID):
-    result = subprocess.run(["gvm-cli", "socket", "--xml",\
-                            f"<delete_target target_id=\"{TARGET_ID}\" />"], capture_output=True, text=True)
+# ---------------------------------------------------------------------
+# delete_target
+# ---------------------------------------------------------------------
+def delete_target(target_id):
+    """
+    指定されたGVMのターゲットIDに対するターゲットを削除するメソッド。
+
+    Parameters:
+        target_id (str): ターゲットのID
+
+    Returns:
+        str: ステータステキスト
+    """
+    result = subprocess.run(["gvm-cli", "socket", "--xml",
+                            f"<delete_target target_id=\"{target_id}\" />"],
+                            capture_output=True, text=True)
+
     if result.stdout == "":
-        return
+        return None
     else:
         xml = result.stdout
         root = xmltodict.parse(xml)

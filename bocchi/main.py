@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
-import datetime
+import logging
+from datetime import datetime
 import os
 import random
 import subprocess
@@ -15,6 +16,10 @@ import bocchi.faradayController as fc
 import bocchi.gvmController as gc
 
 app = Flask(__name__)
+
+# ログの設定
+log_file = f"log_{datetime.now().strftime('%Y%m%d')}.txt"
+logging.basicConfig(filename=log_file, level=logging.INFO)
 
 # ---------------------------------------------------------------------
 # valid_ip
@@ -36,7 +41,7 @@ def valid_ip(order):
 # get_timestamp
 # ---------------------------------------------------------------------
 def get_timestamp():
-    return datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    return datetime.now().strftime('%Y%m%d_%H%M%S')
 
 # ---------------------------------------------------------------------
 # get_menu
@@ -49,7 +54,7 @@ def get_menu():
     - **通常**\n\
         - ［**IPアドレス**］をスキャンして\n\
     - **フルポート**\n\
-        - ［**IPアドレス**］をフルポートでスキャンして\n\
+        - ［**IPアドレス**］をフルポートスキャンして\n\
 - 脆弱性診断\n\
     - GVM(Openvas)を使用して脆弱性診断します。\n\
     - ［**IPアドレス**］を脆弱性診断して\n\n\
@@ -70,7 +75,7 @@ def get_menu():
 - 脆弱性診断結果の表示\n\
     - GVMのダッシュボードを表示します。\n\
     - ［**脆弱性診断の結果**］を表示して\n\n\
-:warning: WakeUp Code（**@bocchi**,**@ぼっち**）の後、半角スペースを入れてから要件をお伝えください。"
+:warning: トリガーワード（**@bocchi**,**@ぼっち**）の後、半角スペースを入れてから要件をお伝えください。"
     return menuText
 
 # ---------------------------------------------------------------------
@@ -126,19 +131,30 @@ def perform_full_port_scan(ipaddr, posted_user):
     messages = f"nmapで{ipaddr}のフルポートスキャンを開始します。\nしばらくお待ちください:coffee:"
     send_message_to_user(posted_user=posted_user, msg=messages)
 
+    # nmapコマンドの作成
+    resultsPath = check_directory(ipaddr)
+    nmap_command = ["nmap", "-vv", "--reason", "-Pn", "-T4", "-sV", "-sC", "--version-all", "-A", "-p-", "--osscan-guess", "--script=vuln", "-oA", f"{resultsPath}/FullScan_{get_timestamp()}", ipaddr]
+
+    # ログにnmapコマンドを記録
+    logging.info(f"フルポートスキャンの実行: {' '.join(nmap_command)}")
+
     # nmapをsubprocessで呼び出してフルポートスキャンを実行
-    resultsPath = check_directory(targetIP=ipaddr)
-    subprocess.run(["nmap", "-vv", "--reason", "-Pn", "-T4", "-sV", "-sC", "--version-all", "-A", "-p-", "--osscan-guess", "--script=vuln", "-oA", f"{resultsPath}/FullScan_{get_timestamp()}", ipaddr])
-    messages = f"{ipaddr}のフルポートスキャンが終了しました。"
+    try:
+        nmap_output = subprocess.check_output(nmap_command, stderr=subprocess.STDOUT, text=True)
+        logging.info(f"フルポートスキャン終了\nnmapの出力:\n{nmap_output}")
+        messages = f"{ipaddr}のフルポートスキャンが終了しました."
 
-    # Faradayへの結果のインポート
-    addText = fc.import_results_to_faraday(dir_path=resultsPath)
+        # Faradayへの結果のインポート
+        addText = fc.import_results_to_faraday(resultsPath)
 
-    # 終了連絡の追加
-    messages += f"\n{addText}"
+        # インポート成功時に結果を追加
+        messages += f"\n{addText}"
+
+    except subprocess.CalledProcessError as e:
+        logging.error(f"nmapコマンドの実行中にエラーが発生しました: {' '.join(nmap_command)}\nエラー出力: {e.output}")
+        messages = f"{ipaddr}のフルポートスキャン中にエラーが発生しました."
 
     send_message_to_user(posted_user, messages)
-
 # ---------------------------------------------------------------------
 # perform_standard_scan
 # ---------------------------------------------------------------------
@@ -158,17 +174,30 @@ def perform_standard_scan(ipaddr, posted_user):
     messages = f"nmapで{ipaddr}のスキャンを開始します。\nしばらくお待ちください:coffee:"
     send_message_to_user(posted_user, messages)
 
-    # nmapをsubprocessで呼び出してスキャンを実行
+    # nmapコマンドの作成
     resultsPath = check_directory(ipaddr)
-    subprocess.run(["nmap", "-vv", "--reason", "-Pn", "-T4", "-sV", "-sC", "--version-all", "-A", "--osscan-guess", "--script=vuln", "-oA", f"{resultsPath}/Scan_{get_timestamp()}", ipaddr])
-    messages = f"{ipaddr}のスキャンが終了しました。"
+    nmap_command = ["nmap", "-vv", "--reason", "-Pn", "-T4", "-sV", "-sC", "--version-all", "-A", "--osscan-guess", "--script=vuln", "-oA", f"{resultsPath}/Scan_{get_timestamp()}", ipaddr]
 
-    # Faradayへの結果のインポート
-    addText = fc.import_results_to_faraday(resultsPath)
+    # ログにnmapコマンドを記録
+    logging.info(f"スキャンの実行: {' '.join(nmap_command)}")
+
+    # nmapをsubprocessで呼び出してスキャンを実行
+    try:
+        nmap_output = subprocess.check_output(nmap_command, stderr=subprocess.STDOUT, text=True)
+        logging.info(f"スキャン終了\nnmapの出力:\n{nmap_output}")
+        messages = f"{ipaddr}のスキャンが終了しました."
+
+        # Faradayへの結果のインポート
+        addText = fc.import_results_to_faraday(resultsPath)
+
+        # インポート成功時に結果を追加
+        messages += f"\n{addText}"
+
+    except subprocess.CalledProcessError as e:
+        logging.error(f"nmapコマンドの実行中にエラーが発生しました: {' '.join(nmap_command)}\nエラー出力: {e.output}")
+        messages = f"{ipaddr}のスキャン中にエラーが発生しました."
 
     # 終了連絡の追加
-    messages += f"\n{addText}"
-
     send_message_to_user(posted_user, messages)
 
 # ---------------------------------------------------------------------
@@ -185,26 +214,37 @@ def perform_vulnerability_scan_with_gvm(ipaddr, posted_user):
     Returns:
         str: 脆弱性スキャン結果のメッセージ
     """
-    # 脆弱性スキャンの開始連絡
-    messages = f"GVM(Openvas)で{ipaddr}の脆弱性診断を開始します。\nしばらくお待ちください:coffee:"
-    send_message_to_user(posted_user, messages)
+    try:
+        # 脆弱性スキャンの開始連絡
+        messages = f"GVM(Openvas)で{ipaddr}の脆弱性診断を開始します。\nしばらくお待ちください:coffee:"
+        send_message_to_user(posted_user, messages)
 
-    # ターゲットの作成
-    targetID = gc.get_target_id(ipaddr)
+        # ログに脆弱性スキャン開始のメッセージを残す
+        logging.info(f"{ipaddr}の脆弱性スキャンを開始します。")
 
-    # タスクの作成
-    taskID = gc.get_task_id(targetID)
+        # ターゲットの作成
+        targetID = gc.get_target_id(ipaddr)
 
-    # タスクの開始
-    gc.start_task(taskID)
+        # タスクの作成
+        taskID = gc.get_task_id(targetID)
 
-    # タスクの終了待機
-    gc.check_status(taskID)
+        # タスクの開始
+        gc.start_task(taskID)
 
-    # GVM結果の取得
-    messages = gc.check_gvm(ipaddr)
+        # タスクの終了待機
+        gc.check_status(taskID)
 
-    send_message_to_user(posted_user, messages)
+        # GVM結果の取得
+        messages = gc.check_gvm(ipaddr)
+
+        send_message_to_user(posted_user, messages)
+
+    except Exception as e:
+            logging.error(f"脆弱性スキャン中にエラーが発生しました: {str(e)}")
+            messages = f"{ipaddr}の脆弱性スキャン中にエラーが発生しました。"
+
+            # エラーメッセージを通知
+            send_message_to_user(posted_user, messages)
 
 # ---------------------------------------------------------------------
 # perform_brutespray_attack
@@ -220,37 +260,47 @@ def perform_brutespray_attack(ipaddr, posted_user):
     Returns:
         str: 認証攻撃の結果メッセージ
     """
-    # Brutespray攻撃のパラメータ取得
-    params = b_conf()
-    USER = params['user_list']
-    PASS = params['password_list']
+    try:
+        # Brutespray攻撃のパラメータ取得
+        params = b_conf()
+        USER = params['user_list']
+        PASS = params['password_list']
 
-    # 攻撃結果保存ディレクトリの作成
-    resultsPath = check_directory(ipaddr)
+        # 攻撃結果保存ディレクトリの作成
+        resultsPath = check_directory(ipaddr)
 
-    # 認証攻撃の開始連絡
-    messages = "認証試行を開始します。\nしばらくお待ちください:coffee:"
-    send_message_to_user(posted_user, messages)
+        # 認証攻撃の開始連絡
+        messages = "認証試行を開始します。\nしばらくお待ちください:coffee:"
+        send_message_to_user(posted_user, messages)
+        logging.info(f"Brutespray攻撃を開始します。対象IP: {ipaddr}")
 
-    # Nmapを使用してサービスバージョンを取得
-    subprocess.run(["nmap", "-vv", "-Pn", "-T4", "-sV", "-oG", f"{resultsPath}/result", ipaddr])
+        # Nmapを使用してサービスバージョンを取得
+        subprocess.run(["nmap", "-vv", "-Pn", "-T4", "-sV", "-oG", f"{resultsPath}/result", ipaddr])
 
-    # Brutesprayで認証攻撃を実行
-    subprocess.run(["brutespray", "--file", f"{resultsPath}/result", "-U", f"{USER}", "-P", f"{PASS}", "-o", f"{resultsPath}", "--threads", "5"])
+        # Brutesprayで認証攻撃を実行
+        subprocess.run(["brutespray", "--file", f"{resultsPath}/result", "-U", f"{USER}", "-P", f"{PASS}", "-o", f"{resultsPath}", "--threads", "5"])
 
-    # 結果ファイルから結果を取得
-    dir_list = os.listdir(resultsPath)
-    results = ""
-    for i in range(len(dir_list)):
-        if ".txt" == os.path.splitext(dir_list[i])[1]:
-            filePath = os.path.join(resultsPath, dir_list[i])
-            with open(filePath) as f:
-                results += f.read()
+        # 結果ファイルから結果を取得
+        dir_list = os.listdir(resultsPath)
+        results = ""
+        for i in range(len(dir_list)):
+            if ".txt" == os.path.splitext(dir_list[i])[1]:
+                filePath = os.path.join(resultsPath, dir_list[i])
+                with open(filePath) as f:
+                    results += f.read()
 
-    # 認証攻撃終了連絡
-    messages = "認証試行終了。\n" + results
+        # 認証攻撃終了連絡
+        messages = "認証試行終了。\n" + results
+        logging.info(f"Brutespray攻撃が終了しました。")
 
-    send_message_to_user(posted_user, messages)
+        send_message_to_user(posted_user, messages)
+
+    except Exception as e:
+        logging.error(f"認証攻撃中にエラーが発生しました: {str(e)}")
+        messages = f"{ipaddr}の認証攻撃中にエラーが発生しました。"
+
+        # エラーメッセージを通知
+        send_message_to_user(posted_user, messages)
 
 @app.route("/matter", methods=['POST'])
 def bot_reply():

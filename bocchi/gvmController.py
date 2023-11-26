@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import datetime
+from datetime import datetime
 import subprocess
 import time
 import xmltodict
@@ -44,7 +44,7 @@ def get_target_id(ip_address):
     Returns:
         str: ターゲットのID
     """
-    target_name = "Target_" + datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+    target_name = "Target_" + datetime.now().strftime('%Y%m%d%H%M%S')
 
     result = subprocess.run(["gvm-cli", "socket", "--xml",
                             f"<create_target><name>{target_name}</name><hosts>{ip_address}</hosts><port_list id=\"{All_IANA_assigned_TCP}\"></port_list></create_target>"],
@@ -71,7 +71,7 @@ def get_task_id(target_id):
     Returns:
         str: タスクのID
     """
-    task_name = "Task_" + datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+    task_name = "Task_" + datetime.now().strftime('%Y%m%d%H%M%S')
 
     result = subprocess.run(["gvm-cli", "socket", "--xml",
                             f"<create_task><name>{task_name}</name><target id=\"{target_id}\"/><config id=\"{CONFIG_ID}\"/><scanner id=\"{SCANNER_ID}\"/></create_task>"],

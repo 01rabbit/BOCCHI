@@ -1,6 +1,6 @@
 # BOCCHI : Bot Operating Chat Communication Hacking Interface
 
-![BOCCHI_logo](images/BOCCHI_banner.png)
+![BOCCHI_logo](images/BOCCHI_logo.png)
 ![Mark](https://img.shields.io/badge/PAKURI-Mark%20VI-green)
 ![License](https://img.shields.io/github/license/01rabbit/BOCCHI)
 ![release-date](https://img.shields.io/github/release-date/01rabbit/BOCCHI)

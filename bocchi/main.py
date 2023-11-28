@@ -4,6 +4,7 @@ import logging
 from datetime import datetime
 import os
 import random
+import re
 import subprocess
 import threading
 from flask import Flask, request, jsonify
@@ -136,12 +137,14 @@ def perform_full_port_scan(ipaddr, posted_user):
     nmap_command = ["nmap", "-vv", "--reason", "-Pn", "-T4", "-sV", "-sC", "--version-all", "-A", "-p-", "--osscan-guess", "--script=vuln", "-oA", f"{resultsPath}/FullScan_{get_timestamp()}", ipaddr]
 
     # ログにnmapコマンドを記録
-    logging.info(f"フルポートスキャンの実行: {' '.join(nmap_command)}")
+    start_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    logging.info(f"{start_time} - INFO: FullScan - TargetIP: {ipaddr} Command: {' '.join(nmap_command)}")
 
     # nmapをsubprocessで呼び出してフルポートスキャンを実行
     try:
-        nmap_output = subprocess.check_output(nmap_command, stderr=subprocess.STDOUT, text=True)
-        logging.info(f"フルポートスキャン終了\nnmapの出力:\n{nmap_output}")
+        subprocess.run(nmap_command, capture_output=True, text=True)
+        end_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        logging.info(f"{end_time} - INFO: FullScan - TargetIP: {ipaddr} Result: Success ")
         messages = f"{ipaddr}のフルポートスキャンが終了しました."
 
         # Faradayへの結果のインポート
@@ -151,10 +154,11 @@ def perform_full_port_scan(ipaddr, posted_user):
         messages += f"\n{addText}"
 
     except subprocess.CalledProcessError as e:
-        logging.error(f"nmapコマンドの実行中にエラーが発生しました: {' '.join(nmap_command)}\nエラー出力: {e.output}")
+        logging.error(f"{ipaddr} - ERROR: FullScan - Nmap command: {' '.join(nmap_command)}\nError output: {e.output}")
         messages = f"{ipaddr}のフルポートスキャン中にエラーが発生しました."
 
     send_message_to_user(posted_user, messages)
+
 # ---------------------------------------------------------------------
 # perform_standard_scan
 # ---------------------------------------------------------------------
@@ -179,12 +183,14 @@ def perform_standard_scan(ipaddr, posted_user):
     nmap_command = ["nmap", "-vv", "--reason", "-Pn", "-T4", "-sV", "-sC", "--version-all", "-A", "--osscan-guess", "--script=vuln", "-oA", f"{resultsPath}/Scan_{get_timestamp()}", ipaddr]
 
     # ログにnmapコマンドを記録
-    logging.info(f"スキャンの実行: {' '.join(nmap_command)}")
+    start_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    logging.info(f"{start_time} - INFO: StdScan - TargetIP: {ipaddr} Command: {' '.join(nmap_command)}")
 
     # nmapをsubprocessで呼び出してスキャンを実行
     try:
-        nmap_output = subprocess.check_output(nmap_command, stderr=subprocess.STDOUT, text=True)
-        logging.info(f"スキャン終了\nnmapの出力:\n{nmap_output}")
+        subprocess.run(nmap_command, capture_output=True, text=True)
+        end_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        logging.info(f"{end_time} - INFO: StdScan - TargetIP: {ipaddr} Result: Success ")
         messages = f"{ipaddr}のスキャンが終了しました."
 
         # Faradayへの結果のインポート
@@ -194,7 +200,7 @@ def perform_standard_scan(ipaddr, posted_user):
         messages += f"\n{addText}"
 
     except subprocess.CalledProcessError as e:
-        logging.error(f"nmapコマンドの実行中にエラーが発生しました: {' '.join(nmap_command)}\nエラー出力: {e.output}")
+        logging.error(f"{ipaddr} - ERROR: StdScan - Nmap command: {' '.join(nmap_command)}\nError output: {e.output}")
         messages = f"{ipaddr}のスキャン中にエラーが発生しました."
 
     # 終了連絡の追加
@@ -220,8 +226,8 @@ def perform_vulnerability_scan_with_gvm(ipaddr, posted_user):
         send_message_to_user(posted_user, messages)
 
         # ログに脆弱性スキャン開始のメッセージを残す
-        logging.info(f"{ipaddr}の脆弱性スキャンを開始します。")
-
+        start_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        logging.info(f"{start_time} - INFO: VulnScan - TargetIP: {ipaddr} ")
         # ターゲットの作成
         targetID = gc.get_target_id(ipaddr)
 
@@ -236,12 +242,13 @@ def perform_vulnerability_scan_with_gvm(ipaddr, posted_user):
 
         # GVM結果の取得
         messages = gc.check_gvm(ipaddr)
-
         send_message_to_user(posted_user, messages)
+        end_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        logging.info(f"{end_time} - INFO: VulnScan - TargetIP: {ipaddr} Result: Success ")
 
     except Exception as e:
-            logging.error(f"脆弱性スキャン中にエラーが発生しました: {str(e)}")
-            messages = f"{ipaddr}の脆弱性スキャン中にエラーが発生しました。"
+            logging.error(f"{ipaddr}:脆弱性診断中にエラーが発生しました: {str(e)}")
+            messages = f"{ipaddr}の脆弱性診断中にエラーが発生しました。"
 
             # エラーメッセージを通知
             send_message_to_user(posted_user, messages)
@@ -272,13 +279,16 @@ def perform_brutespray_attack(ipaddr, posted_user):
         # 認証攻撃の開始連絡
         messages = "認証試行を開始します。\nしばらくお待ちください:coffee:"
         send_message_to_user(posted_user, messages)
-        logging.info(f"Brutespray攻撃を開始します。対象IP: {ipaddr}")
+        start_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        logging.info(f"{start_time} - INFO: BruteAttack - TargetIP: {ipaddr} Command: {' '.join(nmap_command)}")
 
         # Nmapを使用してサービスバージョンを取得
-        subprocess.run(["nmap", "-vv", "-Pn", "-T4", "-sV", "-oG", f"{resultsPath}/result", ipaddr])
+        nmap_command = ["nmap", "-vv", "-Pn", "-T4", "-sV", "-oG", f"{resultsPath}/result", ipaddr]
+        subprocess.run(nmap_command,capture_output=True, text=True)
 
         # Brutesprayで認証攻撃を実行
-        subprocess.run(["brutespray", "--file", f"{resultsPath}/result", "-U", f"{USER}", "-P", f"{PASS}", "-o", f"{resultsPath}", "--threads", "5"])
+        brutespray_command = ["brutespray", "--file", f"{resultsPath}/result", "-U", f"{USER}", "-P", f"{PASS}", "-o", f"{resultsPath}", "--threads", "5"]
+        subprocess.run(brutespray_command,capture_output=True, text= True)
 
         # 結果ファイルから結果を取得
         dir_list = os.listdir(resultsPath)
@@ -291,16 +301,94 @@ def perform_brutespray_attack(ipaddr, posted_user):
 
         # 認証攻撃終了連絡
         messages = "認証試行終了。\n" + results
-        logging.info(f"Brutespray攻撃が終了しました。")
+        end_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        logging.info(f"{end_time} - INFO: BruteAttack - TargetIP: {ipaddr} Result: Success ")
 
         send_message_to_user(posted_user, messages)
 
     except Exception as e:
-        logging.error(f"認証攻撃中にエラーが発生しました: {str(e)}")
-        messages = f"{ipaddr}の認証攻撃中にエラーが発生しました。"
+        logging.error(f"{ipaddr}:認証試行にエラーが発生しました: {str(e)}")
+        messages = f"{ipaddr}の認証試行にエラーが発生しました。"
 
         # エラーメッセージを通知
         send_message_to_user(posted_user, messages)
+
+# ---------------------------------------------------------------------
+# analyze_scan_logs
+# ---------------------------------------------------------------------
+def analyze_scan_logs(log_file_path, target_ip):
+    """
+    ログを解析して、指定されたIPアドレスに対して行われたスキャンや攻撃の種類を確認し、未実施の動作があれば提案メッセージを生成するメソッド。
+
+    Parameters:
+        log_file_path (str): ログファイルのパス
+        target_ip (str): 対象のIPアドレス
+
+    Returns:
+        str: 解析結果のメッセージ
+    """
+    scan_types = ["FullScan", "StdScan", "VulnScan", "BruteAttack"]
+    executed_scans = set()
+
+    with open(log_file_path, 'r') as log_file:
+        log_content = log_file.read()
+
+    # 正規表現を使用してログから情報を抽出
+    log_entries = re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} - INFO: (\w+) - TargetIP: (\d+\.\d+\.\d+\.\d+)', log_content)
+
+    for entry in log_entries:
+        scan_type, ip_address = entry
+        if ip_address == target_ip:
+            executed_scans.add(scan_type)
+
+    # 未実施の動作を確認して提案メッセージを生成
+    not_executed_scans = set(scan_types) - executed_scans
+    suggestion_message = ""
+
+    if "FullScan" in not_executed_scans:
+        suggestion_message += "フルポートスキャンが未実施です。\n"
+        if "StdScan" in not_executed_scans:
+            suggestion_message += "ポートスキャンが未実施です。\n"
+
+    if "VulnScan" in not_executed_scans:
+        suggestion_message += "脆弱性診断が未実施です。\n"
+
+    if "BruteAttack" in not_executed_scans:
+        suggestion_message += "認証試行が未実施です。\n"
+
+    if suggestion_message == "":
+        suggestion_message += f"{target_ip}に対して、ポートスキャン、脆弱性診断及び、認証試行の全てが実施済みです。\n"
+
+    return suggestion_message.strip()
+
+def show_full_port_scan():
+    messages = "\
+フルポートスキャンでは以下のコマンドを実行します。\n\
+`nmap -vv --reason -Pn -T4 -sV -sC --version-all -A -p- --osscan-guess --script=vuln -oA IPAddress`"
+    return messages
+
+def show_standard_scan():
+    messages = "\
+スキャンでは以下のコマンドを実行します。\n\
+`nmap -vv --reason -Pn -T4 -sV -sC --version-all -A --osscan-guess --script=vuln -oA IPAddress`"
+    return messages
+
+def show_vulnerability_scan_with_gvm():
+    messages = "\
+脆弱性診断は`GreenboneVulnerabilityManagement`を`gvm-cli`を使用して以下の要領で実行します。\n\
+1. ターゲットの作成\n\
+2. タスクの作成\n\
+3. タスクの実行"
+    return messages
+
+def show_brutespray_attack():
+    messages = "\
+認証試行は以下の要領で実行します。\n\
+1. Nmapを使用してサービスバージョンを取得\n\
+`nmap -vv -Pn -T4 -sV -oG IPAddress`\n\
+2. Brutesprayで認証攻撃を実行\n\
+`brutespray --file .gnmap File -U Username File -P Password File -o resultsPath --threads 5`"
+    return messages
 
 @app.route("/matter", methods=['POST'])
 def bot_reply():
@@ -320,27 +408,31 @@ def bot_reply():
         ipaddr = valid_ip(userOrder)
         # IPアドレスが格納されているか？
         if ipaddr is not None:
-            f = open('target_IPs.txt','r')
-            targetIPList = f.readline()
-            f.close()
-            if ipaddr in targetIPList:
-                # nmapを使用した各種スキャン
-                if "フルポートスキャン" in userOrder:
-                    # フルポートスキャン
-                    askForFullScanConfirmation(posted_user, ipaddr)
-                elif "スキャン" in userOrder:
-                    # 標準スキャン
-                    askForStdScanConfirmation(posted_user, ipaddr)
+            # IPアドレスは対象に含まれているか？
+            with open('target_IPs.txt') as f:
+                s = f.read()
+                if ipaddr in s:
+                    # nmapを使用した各種スキャン
+                    if "フルポートスキャン" in userOrder:
+                        # フルポートスキャン
+                        askForFullScanConfirmation(posted_user, ipaddr)
+                    elif "スキャン" in userOrder:
+                        # 標準スキャン
+                        askForStdScanConfirmation(posted_user, ipaddr)
+                        return
+                    elif "脆弱性診断" in userOrder:
+                        # GVMを使用した脆弱性診断
+                        askForVulnScanConfirmation(posted_user, ipaddr)
+                    elif "認証試行" in userOrder:
+                        # Brutesprayで認証攻撃
+                        askForBruteAttackConfirmation(posted_user, ipaddr)
+                    elif ("やる" in userOrder and "事" in userOrder) or ("する" in userOrder and "事" in userOrder):
+                        send_message_to_user(posted_user,analyze_scan_logs(log_file, ipaddr))
+                    else:
+                        send_message_to_user(posted_user, f"{ipaddr}に対して何をするか命じてください。")
+                else:
+                    send_message_to_user(posted_user,":no_entry: 指定されたIPアドレスは診断対象外です。\n対象に加えるならば***target_IPs.txt***に追記してください。")
                     return
-                elif "脆弱性診断" in userOrder:
-                    # GVMを使用した脆弱性診断
-                    askForVulnScanConfirmation(posted_user, ipaddr)
-                elif "認証試行" in userOrder:
-                    # Brutesprayで認証攻撃
-                    askForBruteAttackConfirmation(posted_user, ipaddr)
-            else:
-                send_message_to_user(posted_user,":no_entry: 指定されたIPアドレスは診断対象外です。\n対象に加えるならば***target_IPs.txt***に追記してください。")
-                return
         elif "表示" in userOrder or "見る" in userOrder or "見せる" in userOrder:
             if "メニュー" in userOrder:
                 # メニューを表示
@@ -357,8 +449,19 @@ def bot_reply():
             elif "情報" in userOrder or "ファラデー" in userOrder or "faraday" in userOrder or "Faraday" in userOrder:
                 # Faradayのダッシュボードを表示
                 send_message_to_user(posted_user,fc.show_faraday())
+            else:
+                send_message_to_user(posted_user,get_menu())
+        elif "教える" in userOrder:
+            if "スキャン" in userOrder:
+                send_message_to_user(posted_user, show_full_port_scan())
+            if "フルポートスキャン" in userOrder:
+                send_message_to_user(posted_user, show_standard_scan())
+            if "脆弱性診断" in userOrder:
+                send_message_to_user(posted_user, show_vulnerability_scan_with_gvm())
+            if "認証試行" in userOrder:
+                send_message_to_user(posted_user, show_brutespray_attack())
         else:
-            send_message_to_user(posted_user,get_menu())
+            send_message_to_user(posted_user,answer())
 
     except IndexError:
         send_message_to_user(posted_user,answer())

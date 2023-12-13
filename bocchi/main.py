@@ -49,33 +49,14 @@ def get_timestamp():
 # ---------------------------------------------------------------------
 def get_menu():
     menuText = "## メニュー\n\
-### 調査系\n\
-- スキャン\n\
-    - nmapを使用してターゲットを調査します。\n\
-    - **通常**\n\
-        - ［**IPアドレス**］をスキャンして\n\
-    - **フルポート**\n\
-        - ［**IPアドレス**］をフルポートスキャンして\n\
-- 脆弱性診断\n\
-    - GVM(Openvas)を使用して脆弱性診断します。\n\
-    - ［**IPアドレス**］を脆弱性診断して\n\n\
-### 攻撃系\n\
-- 認証試行\n\
-    - Brutesprayを使用して認証試行をします。\n\
-    - ［**IPアドレス**］を認証試行して\n\n\
-### 情報表示\n\
-- faradayの表示\n\
-    - faradayのダッシュボードを表示します。\n\
-    - ［**情報** or **ファラデー** or **faraday**］を表示して\n\
-- サービスリストの表示\n\
-    - 検出したサービスをリストで表示します。\n\
-    - ［**サービス**］を表示して\n\
-- 脆弱性リストの表示\n\
-    - 検出した脆弱性をリストで表示します。\n\
-    - ［**脆弱性**］を表示して\n\
-- 脆弱性診断結果の表示\n\
-    - GVMのダッシュボードを表示します。\n\
-    - ［**脆弱性診断の結果**］を表示して\n\n\
+- [**IPアドレス**]を**スキャン**して\n\
+- [**IPアドレス**]を**フルポートスキャン**して\n\
+- [**IPアドレス**]を**脆弱性診断**して\n\n\
+- [**IPアドレス**]を**認証試行**して\n\n\
+- [**情報** or **ファラデー** or **faraday**]を表示して\n\
+- [**サービス**]を表示して\n\
+- [**脆弱性**]を表示して\n\
+- [**GVM**]を表示して\n\n\
 :warning: トリガーワード（**@bocchi**,**@ぼっち**）の後、半角スペースを入れてから要件をお伝えください。"
     return menuText
 
@@ -99,6 +80,7 @@ def check_directory(target_ip):
     else:
         os.makedirs(dir_path)  # os.mkdirではなくos.makedirsを使用してサブディレクトリも作成する
         return dir_path
+
 # ---------------------------------------------------------------------
 # answer
 # ---------------------------------------------------------------------
@@ -361,29 +343,43 @@ def analyze_scan_logs(log_file_path, target_ip):
 
     return suggestion_message.strip()
 
+# ---------------------------------------------------------------------
+# show_full_port_scan
+# ---------------------------------------------------------------------
 def show_full_port_scan():
     messages = "\
-フルポートスキャンでは以下のコマンドを実行します。\n\
+Nmapを使用して**フルポートスキャン**を対象IPアドレスに行います。\n\
+以下のコマンドを実行します。\n\
 `nmap -vv --reason -Pn -T4 -sV -sC --version-all -A -p- --osscan-guess --script=vuln -oA IPAddress`"
     return messages
 
+# ---------------------------------------------------------------------
+# show_standard_scan
+# ---------------------------------------------------------------------
 def show_standard_scan():
     messages = "\
-スキャンでは以下のコマンドを実行します。\n\
+Nmapを使用して**スキャン**を対象IPアドレスに行います。\n\
+以下のコマンドを実行します。\n\
 `nmap -vv --reason -Pn -T4 -sV -sC --version-all -A --osscan-guess --script=vuln -oA IPAddress`"
     return messages
 
+# ---------------------------------------------------------------------
+# show_vulnerability_scan_with_gvm
+# ---------------------------------------------------------------------
 def show_vulnerability_scan_with_gvm():
     messages = "\
-脆弱性診断は`GreenboneVulnerabilityManagement`を`gvm-cli`を使用して以下の要領で実行します。\n\
+脆弱性診断は**GreenboneVulnerabilityManagement**を`gvm-cli`を使用して以下の要領で実行します。\n\
 1. ターゲットの作成\n\
 2. タスクの作成\n\
 3. タスクの実行"
     return messages
 
+# ---------------------------------------------------------------------
+# show_brutespray_attack
+# ---------------------------------------------------------------------
 def show_brutespray_attack():
     messages = "\
-認証試行は以下の要領で実行します。\n\
+認証試行は**Brutespray**を使用して以下の要領で実行します。\n\
 1. Nmapを使用してサービスバージョンを取得\n\
 `nmap -vv -Pn -T4 -sV -oG IPAddress`\n\
 2. Brutesprayで認証攻撃を実行\n\
@@ -426,7 +422,7 @@ def bot_reply():
                     elif "認証試行" in userOrder:
                         # Brutesprayで認証攻撃
                         askForBruteAttackConfirmation(posted_user, ipaddr)
-                    elif ("やる" in userOrder and "事" in userOrder) or ("する" in userOrder and "事" in userOrder):
+                    elif ("やる" in userOrder and "事" in userOrder) or ("する" in userOrder and "事" in userOrder) or "調査状況" in userOrder:
                         send_message_to_user(posted_user,analyze_scan_logs(log_file, ipaddr))
                     else:
                         send_message_to_user(posted_user, f"{ipaddr}に対して何をするか命じてください。")
@@ -440,7 +436,7 @@ def bot_reply():
             elif "サービス" in userOrder:
                 # サービスをリストで表示
                 send_message_to_user(posted_user,fc.show_service_list_in_faraday())
-            elif "脆弱性診断" in userOrder or "gvm" in userOrder or "GVM" in userOrder:
+            elif "gvm" in userOrder or "GVM" in userOrder:
                 # GVMのダッシュボードを表示
                 send_message_to_user(posted_user,gc.show_gvm())
             elif "脆弱性" in userOrder:

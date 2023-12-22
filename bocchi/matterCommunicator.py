@@ -268,3 +268,58 @@ def askForBruteAttackConfirmation(posted_usr,ipaddr):
         data = json.dumps(reply_data)
     )
     return reply_request
+
+# ---------------------------------------------------------------------
+# askForAllAttacks
+# ---------------------------------------------------------------------
+def askForAllAttacks(posted_usr,ipaddr):
+    """
+    Mattermostに対してフルポートスキャン、脆弱性診断、ブルートフォース攻撃の承認メッセージを送信し、ボタンのアクションに応じた処理を行うメソッド。
+
+    Parameters:
+        posted_usr (str): メッセージを投稿したユーザーのID
+        ipaddr (str): 攻撃対象のIPアドレス
+
+    Returns:
+        requests.Response: Mattermostへのリクエストのレスポンス
+    """
+    reply_headers = {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + BOT_TOKEN,
+    }
+
+    reply_data = {
+        "response_type": "in_channel",
+        "channel_id": CHANNEL_ID,
+        "message": f"@{posted_usr} BOCCHI reply message. :wave:",
+        "props": {
+
+            "attachments": [{
+                "title": "フルポートスキャン、脆弱性診断及び、認証試行の実施",
+                "text": "この行為は法律に抵触する可能性があります。管理者から許可を得た端末や自身の端末に対して使用してください。\n認証試行を承認しますか？",
+                "actions": [{
+                    # Acceptボタン
+                    "name": "Accept",
+                    "integration": {
+                        "url": f"{BOCCHI_SERVER}/actions/all_attacks?token={BOT_TOKEN}",
+                        "context": {
+                            "text": posted_usr +","+ ipaddr
+                        }
+                    }
+                }, {
+                    # Rejectボタン
+                    "name": "Reject",
+                    "style": "danger",
+                    "integration": {
+                        "url": f"{BOCCHI_SERVER}/actions/reject?token={BOT_TOKEN}"
+                    }
+                }]
+            }]
+        }
+    }
+    reply_request = requests.post(
+        MM_API_ADDRESS,
+        headers = reply_headers,
+        data = json.dumps(reply_data)
+    )
+    return reply_request

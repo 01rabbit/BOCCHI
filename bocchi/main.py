@@ -112,7 +112,7 @@ def perform_full_port_scan(ipaddr, posted_user):
     """
     # フルポートスキャンの開始連絡
     messages = f"nmapで{ipaddr}のフルポートスキャンを開始します。\nしばらくお待ちください:coffee:"
-    send_message_to_user(posted_user=posted_user, msg=messages)
+    send_message_to_user(posted_user, messages)
 
     # nmapコマンドの作成
     resultsPath = check_directory(ipaddr)
@@ -296,6 +296,39 @@ def perform_brutespray_attack(ipaddr, posted_user):
         send_message_to_user(posted_user, messages)
 
 # ---------------------------------------------------------------------
+# perform_all_attacks
+# ---------------------------------------------------------------------
+def perform_all_attacks(ipaddr, posted_user):
+    """
+    フルポートスキャンを実行し、
+    GVM(Openvas)を使用して脆弱性診断を実行し、
+    Brutesprayを使用して認証攻撃を実行し、
+    結果をMattermostに通知するメソッド。
+
+    Parameters:
+        ipaddr (str): 攻撃対象のIPアドレス
+        posted_user (str): Mattermostへの通知時に使用するユーザー情報
+
+    Returns:
+        str: 全ての調査、攻撃の結果メッセージ
+    """
+    # 全ての調査及び攻撃の開始連絡
+    messages = f"{ipaddr}に対して全ての調査及び攻撃を開始します。"
+    send_message_to_user(posted_user, messages)
+
+    # フルポートスキャンの実行
+    perform_full_port_scan(ipaddr, posted_user)
+
+    # 脆弱性診断の実行
+    perform_vulnerability_scan_with_gvm(ipaddr, posted_user)
+
+    # 認証試行の実行
+    perform_brutespray_attack(ipaddr, posted_user)
+
+    messages = "全ての調査及び攻撃を終了します。"
+    send_message_to_user(posted_user, messages)
+
+# ---------------------------------------------------------------------
 # analyze_scan_logs
 # ---------------------------------------------------------------------
 def analyze_scan_logs(log_file_path, target_ip):
@@ -422,6 +455,9 @@ def bot_reply():
                     elif "認証試行" in userOrder:
                         # Brutesprayで認証攻撃
                         askForBruteAttackConfirmation(posted_user, ipaddr)
+                    elif "全部実行" in userOrder:
+                        # 全部実行
+                        askForAllAttacks(posted_user, ipaddr)
                     elif ("やる" in userOrder and "事" in userOrder) or ("する" in userOrder and "事" in userOrder) or "調査状況" in userOrder:
                         send_message_to_user(posted_user,analyze_scan_logs(log_file, ipaddr))
                     else:
@@ -449,9 +485,9 @@ def bot_reply():
                 send_message_to_user(posted_user,get_menu())
         elif "教える" in userOrder:
             if "スキャン" in userOrder:
-                send_message_to_user(posted_user, show_full_port_scan())
-            if "フルポートスキャン" in userOrder:
                 send_message_to_user(posted_user, show_standard_scan())
+            if "フルポートスキャン" in userOrder:
+                send_message_to_user(posted_user, show_full_port_scan())
             if "脆弱性診断" in userOrder:
                 send_message_to_user(posted_user, show_vulnerability_scan_with_gvm())
             if "認証試行" in userOrder:
@@ -533,6 +569,24 @@ def brute_attack():
             "props": {}
         },
         "ephemeral_text": f"{posted_usr}により認証試行が承認されました。"
+    }
+    return jsonify(response)
+
+@app.route('/actions/all_attacks', methods=['POST'])
+def all_attacks():
+    data = request.get_json()
+    text = data.get("context", {}).get("text", "")
+    if not text:
+        return jsonify({"ephemeral_text": "Invalid request. Context['text'] is not found."})
+    posted_usr,ipaddr = text.split(",")
+    thread = threading.Thread(target=perform_all_attacks, args=(ipaddr, posted_usr))
+    thread.start()
+
+    response = {
+        "update": {
+            "props": {}
+        },
+        "ephemeral_text": f"{posted_usr}により全部実行が承認されました。"
     }
     return jsonify(response)
 
